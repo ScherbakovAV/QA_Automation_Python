@@ -3,7 +3,7 @@ from printing import print_command_test
 
 if __name__ == '__main__':
     command1, res1 = 'ls /etc', 'sudoers'
-    command2, res2 = 'cat /home/axidar/PycharmProjects/AutoQA/hw1/scripts/ex1.py', 'cmd: str, text: str'
+    command2, res2 = 'cat /home/axidar/PycharmProjects/AutoQA/hw1/scripts/ex2.py', 'cmd: str, text: str'
     res3 = 'resultreturncode'
     print_command_test(command1, res1)
     print_command_test(command2, res2)
