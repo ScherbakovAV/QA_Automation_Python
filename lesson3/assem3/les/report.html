@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>report.html</title>
+    <link href="assets/style.css" rel="stylesheet" type="text/css"/></head>
+  <body onLoad="init()">
+    <script>/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+function toArray(iter) {
+    if (iter === null) {
+        return null;
+    }
+    return Array.prototype.slice.call(iter);
+}
+
+function find(selector, elem) { // eslint-disable-line no-redeclare
+    if (!elem) {
+        elem = document;
+    }
+    return elem.querySelector(selector);
+}
+
+function findAll(selector, elem) {
+    if (!elem) {
+        elem = document;
+    }
+    return toArray(elem.querySelectorAll(selector));
+}
+
+function sortColumn(elem) {
+    toggleSortStates(elem);
+    const colIndex = toArray(elem.parentNode.childNodes).indexOf(elem);
+    let key;
+    if (elem.classList.contains('result')) {
+        key = keyResult;
+    } else if (elem.classList.contains('links')) {
+        key = keyLink;
+    } else {
+        key = keyAlpha;
+    }
+    sortTable(elem, key(colIndex));
+}
+
+function showAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(showExtras);
+}
+
+function hideAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(hideExtras);
+}
+
+function showExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.remove('collapsed');
+    expandcollapse.classList.remove('expander');
+    expandcollapse.classList.add('collapser');
+}
+
+function hideExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.add('collapsed');
+    expandcollapse.classList.remove('collapser');
+    expandcollapse.classList.add('expander');
+}
+
+function showFilters() {
+    let visibleString = getQueryParameter('visible') || 'all';
+    visibleString = visibleString.toLowerCase();
+    const checkedItems = visibleString.split(',');
+
+    const filterItems = document.getElementsByClassName('filter');
+    for (let i = 0; i < filterItems.length; i++) {
+        filterItems[i].hidden = false;
+
+        if (visibleString != 'all') {
+            filterItems[i].checked = checkedItems.includes(filterItems[i].getAttribute('data-test-result'));
+            filterTable(filterItems[i]);
+        }
+    }
+}
+
+function addCollapse() {
+    // Add links for show/hide all
+    const resulttable = find('table#results-table');
+    const showhideall = document.createElement('p');
+    showhideall.innerHTML = '<a href="javascript:showAllExtras()">Show all details</a> / ' +
+                            '<a href="javascript:hideAllExtras()">Hide all details</a>';
+    resulttable.parentElement.insertBefore(showhideall, resulttable);
+
+    // Add show/hide link to each result
+    findAll('.col-result').forEach(function(elem) {
+        const collapsed = getQueryParameter('collapsed') || 'Passed';
+        const extras = elem.parentNode.nextElementSibling;
+        const expandcollapse = document.createElement('span');
+        if (extras.classList.contains('collapsed')) {
+            expandcollapse.classList.add('expander');
+        } else if (collapsed.includes(elem.innerHTML)) {
+            extras.classList.add('collapsed');
+            expandcollapse.classList.add('expander');
+        } else {
+            expandcollapse.classList.add('collapser');
+        }
+        elem.appendChild(expandcollapse);
+
+        elem.addEventListener('click', function(event) {
+            if (event.currentTarget.parentNode.nextElementSibling.classList.contains('collapsed')) {
+                showExtras(event.currentTarget);
+            } else {
+                hideExtras(event.currentTarget);
+            }
+        });
+    });
+}
+
+function getQueryParameter(name) {
+    const match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+}
+
+function init () { // eslint-disable-line no-unused-vars
+    resetSortHeaders();
+
+    addCollapse();
+
+    showFilters();
+
+    sortColumn(find('.initial-sort'));
+
+    findAll('.sortable').forEach(function(elem) {
+        elem.addEventListener('click',
+            function() {
+                sortColumn(elem);
+            }, false);
+    });
+}
+
+function sortTable(clicked, keyFunc) {
+    const rows = findAll('.results-table-row');
+    const reversed = !clicked.classList.contains('asc');
+    const sortedRows = sort(rows, keyFunc, reversed);
+    /* Whole table is removed here because browsers acts much slower
+     * when appending existing elements.
+     */
+    const thead = document.getElementById('results-table-head');
+    document.getElementById('results-table').remove();
+    const parent = document.createElement('table');
+    parent.id = 'results-table';
+    parent.appendChild(thead);
+    sortedRows.forEach(function(elem) {
+        parent.appendChild(elem);
+    });
+    document.getElementsByTagName('BODY')[0].appendChild(parent);
+}
+
+function sort(items, keyFunc, reversed) {
+    const sortArray = items.map(function(item, i) {
+        return [keyFunc(item), i];
+    });
+
+    sortArray.sort(function(a, b) {
+        const keyA = a[0];
+        const keyB = b[0];
+
+        if (keyA == keyB) return 0;
+
+        if (reversed) {
+            return keyA < keyB ? 1 : -1;
+        } else {
+            return keyA > keyB ? 1 : -1;
+        }
+    });
+
+    return sortArray.map(function(item) {
+        const index = item[1];
+        return items[index];
+    });
+}
+
+function keyAlpha(colIndex) {
+    return function(elem) {
+        return elem.childNodes[1].childNodes[colIndex].firstChild.data.toLowerCase();
+    };
+}
+
+function keyLink(colIndex) {
+    return function(elem) {
+        const dataCell = elem.childNodes[1].childNodes[colIndex].firstChild;
+        return dataCell == null ? '' : dataCell.innerText.toLowerCase();
+    };
+}
+
+function keyResult(colIndex) {
+    return function(elem) {
+        const strings = ['Error', 'Failed', 'Rerun', 'XFailed', 'XPassed',
+            'Skipped', 'Passed'];
+        return strings.indexOf(elem.childNodes[1].childNodes[colIndex].firstChild.data);
+    };
+}
+
+function resetSortHeaders() {
+    findAll('.sort-icon').forEach(function(elem) {
+        elem.parentNode.removeChild(elem);
+    });
+    findAll('.sortable').forEach(function(elem) {
+        const icon = document.createElement('div');
+        icon.className = 'sort-icon';
+        icon.textContent = 'vvv';
+        elem.insertBefore(icon, elem.firstChild);
+        elem.classList.remove('desc', 'active');
+        elem.classList.add('asc', 'inactive');
+    });
+}
+
+function toggleSortStates(elem) {
+    //if active, toggle between asc and desc
+    if (elem.classList.contains('active')) {
+        elem.classList.toggle('asc');
+        elem.classList.toggle('desc');
+    }
+
+    //if inactive, reset all other functions and add ascending active
+    if (elem.classList.contains('inactive')) {
+        resetSortHeaders();
+        elem.classList.remove('inactive');
+        elem.classList.add('active');
+    }
+}
+
+function isAllRowsHidden(value) {
+    return value.hidden == false;
+}
+
+function filterTable(elem) { // eslint-disable-line no-unused-vars
+    const outcomeAtt = 'data-test-result';
+    const outcome = elem.getAttribute(outcomeAtt);
+    const classOutcome = outcome + ' results-table-row';
+    const outcomeRows = document.getElementsByClassName(classOutcome);
+
+    for(let i = 0; i < outcomeRows.length; i++){
+        outcomeRows[i].hidden = !elem.checked;
+    }
+
+    const rows = findAll('.results-table-row').filter(isAllRowsHidden);
+    const allRowsHidden = rows.length == 0 ? true : false;
+    const notFoundMessage = document.getElementById('not-found-message');
+    notFoundMessage.hidden = !allRowsHidden;
+}
+</script>
+    <h1>report.html</h1>
+    <p>Report generated on 12-Aug-2023 at 18:32:13 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a> v3.2.0</p>
+    <h2>Summary</h2>
+    <p>8 tests ran in 3.90 seconds. </p>
+    <p class="filter" hidden="true">(Un)check the boxes to filter the results.</p><input checked="true" class="filter" data-test-result="passed" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="passed">8 passed</span>, <input checked="true" class="filter" data-test-result="skipped" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="skipped">0 skipped</span>, <input checked="true" class="filter" data-test-result="failed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="failed">0 failed</span>, <input checked="true" class="filter" data-test-result="error" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="error">0 errors</span>, <input checked="true" class="filter" data-test-result="xfailed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xfailed">0 expected failures</span>, <input checked="true" class="filter" data-test-result="xpassed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xpassed">0 unexpected passes</span>
+    <h2>Results</h2>
+    <table id="results-table">
+      <thead id="results-table-head">
+        <tr>
+          <th class="sortable result initial-sort" col="result">Result</th>
+          <th class="sortable" col="name">Test</th>
+          <th class="sortable" col="duration">Duration</th>
+          <th class="sortable links" col="links">Links</th></tr>
+        <tr hidden="true" id="not-found-message">
+          <th colspan="4">No results found. Try to check the filters</th></tr></thead>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_1.py::TestPositive::test_step1</td>
+          <td class="col-duration">0.69</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -----------------------------Captured stdout setup------------------------------ <br/>Start: 18:32:10.070031
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>mkdir: невозможно создать каталог «/home/axidar/PycharmProjects/AutoQA/lesson3/assem3/les/work/tst»: Файл существует
+mkdir: невозможно создать каталог «/home/axidar/PycharmProjects/AutoQA/lesson3/assem3/les/work/tst»: Файл существует
+mkdir: невозможно создать каталог «/home/axidar/PycharmProjects/AutoQA/lesson3/assem3/les/work/folder1»: Файл существует
+mkdir: невозможно создать каталог «/home/axidar/PycharmProjects/AutoQA/lesson3/assem3/les/work/folder2»: Файл существует
+1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,00448843 s, 234 MB/s
+1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,00439643 s, 239 MB/s
+1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,0050349 s, 208 MB/s
+1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,0042839 s, 245 MB/s
+1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,00436377 s, 240 MB/s
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>Finish: 18:32:10.766663
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_1.py::TestPositive::test_step2</td>
+          <td class="col-duration">0.66</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -----------------------------Captured stdout setup------------------------------ <br/>Start: 18:32:10.767826
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,00494202 s, 212 MB/s
+1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,00433463 s, 242 MB/s
+1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,00432477 s, 242 MB/s
+1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,0045707 s, 229 MB/s
+1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,00446714 s, 235 MB/s
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>Finish: 18:32:11.431341
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_1.py::TestPositive::test_step3</td>
+          <td class="col-duration">0.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -----------------------------Captured stdout setup------------------------------ <br/>Start: 18:32:11.432130
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>Finish: 18:32:11.442574
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_1.py::TestPositive::test_step4</td>
+          <td class="col-duration">0.60</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -----------------------------Captured stdout setup------------------------------ <br/>Start: 18:32:11.443383
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>Finish: 18:32:12.043631
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_1.py::TestPositive::test_step5</td>
+          <td class="col-duration">0.66</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -----------------------------Captured stdout setup------------------------------ <br/>Start: 18:32:12.044387
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,00432534 s, 242 MB/s
+1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,00441112 s, 238 MB/s
+1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,0049037 s, 214 MB/s
+1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,00442573 s, 237 MB/s
+1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,00422898 s, 248 MB/s
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>Finish: 18:32:12.712769
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_1.py::TestPositive::test_step6</td>
+          <td class="col-duration">0.78</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -----------------------------Captured stdout setup------------------------------ <br/>Start: 18:32:12.713563
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,00452745 s, 232 MB/s
+1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,00462004 s, 227 MB/s
+1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,00493094 s, 213 MB/s
+1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,00434553 s, 241 MB/s
+1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,00439306 s, 239 MB/s
+1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,00439917 s, 238 MB/s
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>Finish: 18:32:13.502738
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_1.py::TestPositive::test_step7</td>
+          <td class="col-duration">0.00</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -----------------------------Captured stdout setup------------------------------ <br/>Start: 18:32:13.503555
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>Finish: 18:32:13.511272
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_1.py::TestPositive::test_step8</td>
+          <td class="col-duration">0.42</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -----------------------------Captured stdout setup------------------------------ <br/>Start: 18:32:13.512002
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,00466281 s, 225 MB/s
+1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,00442205 s, 237 MB/s
+1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,00426927 s, 246 MB/s
+1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,00427044 s, 246 MB/s
+1+0 записей получено
+1+0 записей отправлено
+1048576 байт (1,0 MB, 1,0 MiB) скопирован, 0,00427338 s, 245 MB/s
+<br/> ----------------------------Captured stdout teardown---------------------------- <br/>Finish: 18:32:13.937652
+<br/></div></td></tr></tbody></table></body></html>
