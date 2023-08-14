@@ -15,7 +15,7 @@ with open('config.yaml') as f:
 @pytest.fixture()
 def make_folders():
     return checkout(
-        "mkdir {} {} {} {}".format(data["folder_in"], data["folder_in"], data["folder_ext"], data["folder_ext2"]), "")
+        "mkdir {} {} {} {}".format(data["folder_in"], data["folder_out"], data["folder_ext"], data["folder_ext2"]), "")
 
 
 @pytest.fixture()

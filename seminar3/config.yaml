@@ -1,0 +1,6 @@
+folder_in: /home/axidar/tst/file
+folder_out: /home/axidar/tst/out
+folder_ext: /home/axidar/tst/ext
+folder_badarx: /home/axidar/tst/badarx
+count_file: 5
+size_file: 1M
