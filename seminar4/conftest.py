@@ -1,7 +1,5 @@
 import random
 import string
-import subprocess
-
 import pytest
 import yaml
 from datetime import datetime

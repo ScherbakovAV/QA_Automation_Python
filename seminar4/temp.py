@@ -19,4 +19,4 @@ def save_log(starttime, name):
     #                f'echo "123" | sudo -S journalctl --since "{starttime}"'))
 
 
-print(save_log(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), data["stat_file"]))
+print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))

@@ -76,5 +76,6 @@ def test_step8(make_folders, clear_folders, make_files):
     """Тестирование команды расчёта хэша"""
     checkout_positive(f'cd {data["folder_in"]}; 7z a -t{data["arc_type"]} '
                       f'{data["folder_out"]}/arx1.{data["arc_type"]}', "")
+
     assert checkout_positive(f'cd {data["folder_out"]}; 7z h arx1.{data["arc_type"]}',
-                             getout(data["folder_in"], 'arx1.{data["arc_type"]}')), 'test 8 FAIL'
+                             getout(data["folder_in"], f'arx1.{data["arc_type"]}')), 'test 8 FAIL'
